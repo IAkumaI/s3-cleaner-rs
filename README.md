@@ -53,9 +53,44 @@ s3-cleaner --older-than=12h --prefix=logs/,temp/ --suffix=.log,.tmp --delete
 -   `--delete` - actual file deletion (default false)
 -   `--prefix=<prefixes>` - work with files starting with specified prefixes, comma-separated (e.g., "upload/,backup/")
 -   `--suffix=<suffixes>` - work with files ending with specified suffixes, comma-separated (e.g., ".tmp,.bak")
--   `--older-than=<duration>` - delete files older than specified time (format 1d2h30m)
+-   `--older-than=<duration>` - delete files older than specified time (see duration format below)
 -   `--page-size=<size>` - page size when retrieving file list (default 100)
 -   `--concurrent-requests=<num>` - number of simultaneous requests to S3 (default 10)
+
+### Duration Format
+
+The `--older-than` parameter accepts duration in a flexible format. You can use:
+
+-   Single unit: `30d`, `24h`, `60m`
+-   Multiple units: `1d2h30m`, `24h30m`, `1h30m15s`
+-   Units with spaces: `1d 2h 30m`, `24h 30m`
+-   Units with plus: `1d+2h+30m`, `24h+30m`
+
+Available time units:
+
+-   `y` - years
+-   `w` - weeks
+-   `d` - days
+-   `h` - hours
+-   `m` - minutes
+-   `s` - seconds
+-   `ms` - milliseconds
+-   `us` or `µs` - microseconds
+-   `ns` - nanoseconds
+
+Examples:
+
+```bash
+--older-than=30d          # 30 days
+--older-than=24h          # 24 hours
+--older-than=1d12h        # 1 day and 12 hours
+--older-than=1w2d         # 1 week and 2 days
+--older-than=1d 6h 30m    # 1 day, 6 hours and 30 minutes
+--older-than=1d+6h+30m    # same as above
+--older-than=90m          # 90 minutes
+```
+
+Note: If no unit is specified, seconds are assumed as the default unit.
 
 ## Security
 
