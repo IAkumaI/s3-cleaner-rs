@@ -11,7 +11,7 @@ S3 Cleaner is a command-line tool that helps automate the process of removing ou
 -   Delete files older than specified age
 -   Support for S3-compatible storages
 -   Connection parameters configuration through environment variables (env)
--   Ability to work with specific prefixes/folders
+-   Support for multiple prefixes and suffixes (comma-separated)
 -   Safe deletion with preview mode
 
 ## Installation
@@ -35,17 +35,27 @@ The following environment variables are required for the utility to work:
 ## Usage
 
 ```bash
-s3-cleaner --days 30 --prefix backup/
+# Delete files older than 30 days in a single prefix
+s3-cleaner --older-than=30d --prefix=backup/
+
+# Delete files older than 7 days in multiple prefixes
+s3-cleaner --older-than=7d --prefix=upload/,download/,temp/
+
+# Delete specific file types older than 1 day
+s3-cleaner --older-than=1d --suffix=.tmp,.bak,.temp
+
+# Delete specific files from specific locations
+s3-cleaner --older-than=12h --prefix=logs/,temp/ --suffix=.log,.tmp --delete
 ```
 
 ### Launch Parameters
 
 -   `--delete` - actual file deletion (default false)
--   `--prefix` - work only with files starting with the specified prefix (default "")
--   `--suffix` - work only with files ending with the specified suffix (default "")
--   `--older-than` - delete files older than specified time (format 1d2h30m)
--   `--page-size` - page size when retrieving file list (default 100)
--   `--concurrent-requests` - number of simultaneous requests to S3 (default 10)
+-   `--prefix=<prefixes>` - work with files starting with specified prefixes, comma-separated (e.g., "upload/,backup/")
+-   `--suffix=<suffixes>` - work with files ending with specified suffixes, comma-separated (e.g., ".tmp,.bak")
+-   `--older-than=<duration>` - delete files older than specified time (format 1d2h30m)
+-   `--page-size=<size>` - page size when retrieving file list (default 100)
+-   `--concurrent-requests=<num>` - number of simultaneous requests to S3 (default 10)
 
 ## Security
 

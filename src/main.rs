@@ -9,13 +9,13 @@ use tokio_stream::StreamExt;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
-    /// Prefix for search objects
-    #[arg(short, long, default_value = "")]
-    prefix: String,
+    /// Comma-separated prefixes for search objects (e.g. "upload,download")
+    #[arg(short, long, value_delimiter = ',', default_values_t = Vec::<String>::new())]
+    prefix: Vec<String>,
 
-    /// Suffix for search objects
-    #[arg(short, long, default_value = "")]
-    suffix: String,
+    /// Comma-separated suffixes for search objects (e.g. ".jpg,.png")
+    #[arg(short, long, value_delimiter = ',', default_values_t = Vec::<String>::new())]
+    suffix: Vec<String>,
 
     /// Objects older than the specified will be deleted (1d2h30m)
     #[arg(short, long)]
@@ -64,10 +64,13 @@ async fn main() {
 
     let s3_client = Arc::new(aws_sdk_s3::Client::new(&shared_config));
 
+    // Use the first prefix for initial listing, we'll filter the rest in memory
+    let initial_prefix = c_prefix.first().map(String::as_str).unwrap_or("");
+
     let mut objects = s3_client
         .list_objects_v2()
         .bucket(c_bucket.clone())
-        .prefix(c_prefix.clone())
+        .prefix(initial_prefix)
         .into_paginator()
         .page_size(cli.page_size)
         .send();
@@ -89,18 +92,30 @@ async fn main() {
             .contents()
             .unwrap_or_default()
             .iter()
-            .filter(|obj| !obj.key().unwrap().is_empty()) // Check that the key is not empty
-            .filter(|obj| !obj.key().unwrap().eq(&c_prefix)) // Prevent deletion of folder matching the prefix
-            .filter(|obj| !obj.key().unwrap().eq(&c_suffix)) // Prevent deletion of folder matching the suffix
-            .filter(|obj| obj.key().unwrap().starts_with(&c_prefix)) // Check that object starts with the prefix
-            .filter(|obj| obj.last_modified().unwrap().secs().le(&start_timestamp)) // Check that object is older than specified time
+            // Check the key is not empty
+            .filter(|obj| !obj.key().unwrap().is_empty())
+            // Prevent deletion of folders matching any prefix
             .filter(|obj| {
-                // Check that object ends with the suffix
-                c_suffix.is_empty() || {
-                    let key = obj.key().unwrap();
-                    key.len() >= c_suffix.len() && key.ends_with(&c_suffix)
-                }
-            });
+                let key = obj.key().unwrap();
+                !c_prefix.iter().any(|p| key.eq(p))
+            })
+            // Prevent deletion of folders matching any suffix
+            .filter(|obj| {
+                let key = obj.key().unwrap();
+                !c_suffix.iter().any(|s| key.eq(s))
+            })
+            // Check that object starts with any of the prefixes (or no prefix filter was specified)
+            .filter(|obj| {
+                let key = obj.key().unwrap();
+                c_prefix.is_empty() || c_prefix.iter().any(|p| key.starts_with(p))
+            })
+            // Check that object ends with any of the suffixes (or no suffix filter was specified)
+            .filter(|obj| {
+                let key = obj.key().unwrap();
+                c_suffix.is_empty() || c_suffix.iter().any(|s| key.ends_with(s))
+            })
+            // Check that object is older than specified time
+            .filter(|obj| obj.last_modified().unwrap().secs().le(&start_timestamp));
 
         for obj in objects {
             let ct = Local
