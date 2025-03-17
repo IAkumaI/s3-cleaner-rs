@@ -2,7 +2,6 @@ FROM rust:1.78-alpine3.19 as build
 
 LABEL maintainer="IAkumaI"
 LABEL description="S3 Cleaner - A utility for cleaning old files from S3-compatible storage"
-LABEL version="0.1.0"
 
 RUN apk add --no-cache musl-dev pkgconfig openssl-dev
 
